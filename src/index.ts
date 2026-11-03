@@ -188,6 +188,8 @@ export interface Config {
   maxActiveSubagents: Volatile<number>
   /** Default delegation depth for tools without an explicit limit; defaults to 1. */
   maxDepth: Volatile<number>
+  /** Whether a settled child's final reply is delivered to its parent; defaults to true. */
+  settlementNotice: boolean
 }
 
 /** Named provider registry with managed activations, durable discovery, and local child messaging. */
@@ -195,6 +197,7 @@ export class SubagentRuntime extends TypertRemoteService {
   static Config = z.object({
     maxDepth: z.number().step(1).min(0).max(Number.MAX_SAFE_INTEGER).default(1).volatile(),
     maxActiveSubagents: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(8).volatile(),
+    settlementNotice: z.boolean().default(true),
   })
   static inject = ['workingDirectory']
   private providers = new Map<string, SubagentProvider>()
@@ -217,7 +220,7 @@ export class SubagentRuntime extends TypertRemoteService {
         },
         prepareContinuable: (name, request) => this.prepareContinuable(name, request),
         observeActivation: (provider, childId, parent) => this.observeActivation(provider, childId, parent),
-      }, () => this.config.maxActiveSubagents.get())
+      }, () => this.config.maxActiveSubagents.get(), () => this.config.settlementNotice)
       this.manager = manager
       childCtx.effect(() => () => {
         /* v8 ignore else -- one injected binding owns the slot until its fiber disposes. */

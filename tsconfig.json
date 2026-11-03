@@ -1,78 +1,32 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  // Standalone build config. Upstream this package extends ../../../tsconfig.base.json
+  // and references ~20 workspace projects; here the same compiler options are
+  // inlined and those edges become ordinary npm dependencies (see package.json).
+  // tsconfig.upstream.json keeps the original for reference.
   "compilerOptions": {
+    "target": "es2024",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "sourceMap": false,
+    "declarationMap": false,
+    "composite": false,
+    "incremental": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": ["node"],
     "rootDir": "src",
     "outDir": "lib/types"
   },
-  "include": [
-    "src"
-  ],
-  "references": [
-    {
-      "path": "../../../vendor/cosmokit"
-    },
-    {
-      "path": "../../../vendor/cordis"
-    },
-    {
-      "path": "../../../vendor/schemastery"
-    },
-    {
-      "path": "../../attachment/attachment"
-    },
-    {
-      "path": "../../core/agent"
-    },
-    {
-      "path": "../../llm/llm"
-    },
-    {
-      "path": "../../core/tools"
-    },
-    {
-      "path": "../../core/scope"
-    },
-    {
-      "path": "../../core/system-prompt"
-    },
-    {
-      "path": "../../interaction/user-approval"
-    },
-    {
-      "path": "../../preset/agent-preset-registry"
-    },
-    {
-      "path": "../../sandbox/sandbox"
-    },
-    {
-      "path": "../../sandbox/sandbox-policy"
-    },
-    {
-      "path": "../../session/session-persistence"
-    },
-    {
-      "path": "../../session/session-projection"
-    },
-    {
-      "path": "../../session-query/session-query"
-    },
-    {
-      "path": "../../workspace/workspace"
-    },
-    {
-      "path": "../../typert/protocol"
-    },
-    {
-      "path": "../../util/time"
-    },
-    {
-      "path": "../../interaction/permission-presets"
-    },
-    {
-      "path": "../../util/chunked-list"
-    },
-    {
-      "path": "../../session/working-directory"
-    }
-  ]
+  "include": ["src"]
 }

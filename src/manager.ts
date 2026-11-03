@@ -152,11 +152,13 @@ export class SubagentManager {
    * @param ctx - context providing Agents, Sessions, and teardown ownership.
    * @param host - provider dispatch and lifecycle observation owned by the service.
    * @param maxActiveSubagents - the current configured child capacity.
+   * @param settlementNotice - whether settlement notices are delivered to the parent.
    */
   constructor(
     private readonly ctx: Context,
     private readonly host: SubagentHost,
     private readonly maxActiveSubagents: () => number,
+    private readonly settlementNotice: () => boolean,
   ) {
     // Ordinary Cordis owner effects unwind in reverse registration order, which
     // cannot express the dynamic child graph. Register the private scope's
@@ -1185,6 +1187,7 @@ export class SubagentManager {
 
   /** Deliver the captured execution result to the durable direct parent after cleanup. */
   private notifySettlement(activation: Activation, terminal: SubagentResult): void {
+    if (this.settlementNotice?.() === false) return
     if (!activation.announced || activation.delivery === 'caller') return
     try {
       const parent = this.ctx.agents.get(activation.parent.id)

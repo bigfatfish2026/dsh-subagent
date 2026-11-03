@@ -16,7 +16,8 @@
 
 ## 目录
 
-- `src/`、`tests/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`README.i18n.yaml`：上游 rc.5 原样。
+- `src/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`：上游 rc.5 原样。
+- `tests/`：12 个 spec，全部可跑；上游 24 个里依赖 monorepo 内部 fixture 的 12 个已删（详见 `AGENTS.md`）。
 - `lib/`：构建产物，随仓库提交。宿主用 `link:` 直接读这个目录，不会替你跑构建。
 - `typert/`：`lib/typert.host.*` 与 `lib/typert.remote-client.*` 的预生成源，构建时拷进 `lib/`。
 - `tsconfig.json`：从上游根 `tsconfig.base.json` 裁剪内联；`tsconfig.upstream.json` 保留原版备查。
@@ -68,6 +69,6 @@ npm run build          # = bash scripts/build.sh
 
 ## 注意
 
-- `tests/` 是上游原样，跑不起来：依赖 monorepo 内部 fixture（`../../../core/agent-loop/tests/mock-adapter.ts` 之类）和未发布的兄弟包。本仓库只负责构建。
+- `tests/` 现有 12 个 spec，全部可跑（`npx -y vitest@3 run`：12 files / 162 tests）。上游另外 12 个 import `../../../core/agent-loop/tests/mock-adapter.ts` 这类 monorepo 内部 fixture，在本仓永远加载失败，已删掉；别再把它们加回来。跑测试前要先装 `package.json` 里声明的 devDependencies（步骤见 `AGENTS.md`）。
 - 这是源码 fork，不是产物补丁。早先那套「从全局安装目录拷 `lib/` 再打 patch」的 `patches/` 和 `scripts/rebuild.sh` 已随改造删除，历史留在 git log 里。
 - 不要往这个仓库里塞 `node_modules` 和 `.build-tools`。

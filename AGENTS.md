@@ -11,7 +11,7 @@
 - `src/index.ts`：`SubagentRuntime.Config` 接口加 `settlementNotice: boolean`，schema 加 `z.boolean().default(true)`；创建 `SubagentManager` 时把 `() => this.config.settlementNotice` 当访问器传进去（这个类里没有 `this.config`）。
 - `src/manager.ts`：`SubagentManager` 构造函数收这个访问器，`notifySettlement()` 开头 `=== false` 直接返回。
 
-除此之外 `src/`、`tests/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`tsconfig.upstream.json` 与 tag 原样一致，可以用 diff 核对。
+除此之外 `src/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`tsconfig.upstream.json` 与 tag 原样一致，可以用 diff 核对。`tests/` 例外：上游 24 个 spec 里 12 个依赖 monorepo 内部 fixture，在本仓永远跑不了，已裁掉，只留 12 个可跑的（见下面「测试」一节）。
 
 ## 升级流程
 
@@ -53,7 +53,7 @@ grep -rn settlementNotice /tmp/dsh-src/src
 
 有输出就是上游自己实现了——把我们的补丁删掉（`src/index.ts` 的字段与传参、`src/manager.ts` 的构造参数与守卫），`src/` 换回上游原样再构建。别留两套。
 
-**5. 覆盖源码、按第 4 步结论重打补丁。** `src/`、`tests/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`tsconfig.upstream.json` 从 `/tmp/dsh-src/` 拷过来；`README.md` 是本仓自己的，别覆盖。`tsconfig.json` 是本仓从上游 `tsconfig.base.json` 裁剪内联的，新版根配置有变化就跟着调。
+**5. 覆盖源码、按第 4 步结论重打补丁。** `src/`、`tests/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`tsconfig.upstream.json` 从 `/tmp/dsh-src/` 拷过来（拷完按下面「测试」一节裁掉跑不了的 spec）；`README.md` 是本仓自己的，别覆盖。`tsconfig.json` 是本仓从上游 `tsconfig.base.json` 裁剪内联的，新版根配置有变化就跟着调。
 
 **6. 重编、核对、提交。** 构建见下一节，核对走「验收清单」，然后更新 `package-lock.json`、提交推送。
 
@@ -95,18 +95,21 @@ done
 
 有 `DIFF` 就说明上游重出过，把官方那四份拷进 `typert/` 再重跑构建。
 
-## 测试跑不全
+## 测试
 
-`tests/` 是上游原样。24 个 spec 里有 12 个从 `../../../core/agent-loop/tests/mock-adapter.ts`、`../../../settings/settings/tests/live-config.ts`、`../../../llm/llm-deepseek/tests/helpers.ts` 这类 monorepo 内部路径 import fixture（还有未发布的兄弟包），公开环境加载就失败。**这不是回归，别去修，也别把路径改成 npm 包。**
+`tests/` 现有 12 个 spec，全部可跑；上游那 12 个依赖 monorepo 内部 fixture 的已在本仓裁掉，`git log` 里查得到。裁掉的判据就是一条：任何 `from '../../../...'` 的 import 都指向上游 monorepo 里不存在的路径（`core/agent-loop/tests/mock-adapter.ts`、`settings/settings/tests/live-config.ts`、`llm/llm-deepseek/tests/helpers.ts`、`session/session-persistence-jsonl/src/format.ts`、`storage/*`、`schedule/*`），公开环境加载即失败。**这不是回归，别去修，也别把路径改成 npm 包。**
 
-能跑的那半用 vitest 跑，仓库没带测试运行器，现装：
+跑之前先装声明里的 devDependencies——`node_modules/` 里的运行时包是软链宿主的，测试要的 `dsh-agent-loop`、`dsh-agent-loop-testkit`、`dsh-fs-sandbox`、`dsh-tool-fs`、`dsh-session-persistence-jsonl`、`cordis-plugin-loader|include` 不在里头。这些版本号都在 `package.json` 里，`dsh-agent-loop-testkit` npm 上有 rc.5：
 
 ```bash
-grep -L "from '\.\./\.\./\.\./" tests/*.spec.ts      # 能跑的清单
-npx -y vitest@3 run $(grep -L "from '\.\./\.\./\.\./" tests/*.spec.ts)
+npm install --no-save @deepseek-ai/dsh-agent-loop-testkit@0.2.1-rc.5 \
+  @deepseek-ai/dsh-agent-loop@0.2.1-rc.5 @deepseek-ai/dsh-fs-sandbox@0.2.1-rc.5 \
+  @deepseek-ai/dsh-tool-fs@0.2.1-rc.5 @deepseek-ai/dsh-session-persistence-jsonl@0.2.1-rc.5 \
+  @deepseek-ai/cordis-plugin-loader@~1.0.6 @deepseek-ai/cordis-plugin-include@~1.0.10
+npx -y vitest@3 run      # 12 files / 162 tests，全绿
 ```
 
-全挂也别慌，先看构建与冒烟结论；能跑的那部分必须绿。
+升级取新 tag 源码后，`tests/` 会重新带回来那 12 个。判据：`grep -l "from '\.\./\.\./\.\./" tests/*.spec.ts` 列出的就是，连它们专属的 helper/fixture 一起删；删之前确认没有别的 spec 引用（`grep -rn <名字> tests/src`）。
 
 ## 验收清单
 

@@ -78,7 +78,7 @@ npm run build          # = bash scripts/build.sh
 - `./typert` → `lib/typert.host.js` + `.d.ts`
 - `./remote` → `lib/typert.remote-client.js` + `.d.ts`
 
-少一个，宿主那边 import 就炸。
+少一个，宿主那边 import 就炸。`exports` 里另有 `./src/*`、`./package.json`、`./locale/*.json`，直接指向源码与语言包，不涉及构建产物。
 
 ## typert 四份什么时候要重出
 

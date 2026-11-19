@@ -4,21 +4,21 @@
 
 ## 这个仓库是什么
 
-官方 `@deepseek-ai/dsh-subagent` 0.2.2-rc.1 的源码自建版。源码取自官方 monorepo 的 tag `dsh-v0.2.2-rc.1`（commit `66491b0`）里的 `packages/subagent/subagent`，`lib/` 由本仓库自己构建并随仓库提交。
+官方 `@deepseek-ai/dsh-subagent` 0.2.2-rc.5 的源码自建版。源码取自官方 monorepo 的 tag `dsh-v0.2.2-rc.5`（commit `9c2670d`）里的 `packages/subagent/subagent`，`lib/` 由本仓库自己构建并随仓库提交。
 
 唯一的功能改动是 `settlementNotice` 开关，默认 `true`，行为与上游一致：
 
 - `src/index.ts`：`SubagentRuntime.Config` 接口加 `settlementNotice: boolean`，schema 加 `z.boolean().default(true)`；创建 `SubagentManager` 时把 `() => this.config.settlementNotice` 当访问器传进去（这个类里没有 `this.config`）。
 - `src/manager.ts`：`SubagentManager` 构造函数收这个访问器，`notifySettlement()` 开头 `=== false` 直接返回。
 
-除此之外 `src/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`tsconfig.upstream.json` 与 tag 原样一致，可以用 diff 核对。`tests/` 例外：上游 24 个 spec 里 12 个依赖 monorepo 内部 fixture，在本仓永远跑不了，已裁掉，只留 12 个可跑的（见下面「测试」一节）。
+除此之外 `src/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`、`tsconfig.upstream.json` 与 tag 原样一致，可以用 diff 核对。`tests/` 例外：上游 33 个 spec 里 14 个依赖 monorepo 内部 fixture，在本仓永远跑不了，已裁掉，只留 12 个（其中 `external-activation.spec.ts` 有 4 条在单包环境仍失败，见下面「测试」一节）。
 
 ## 升级流程
 
 按顺序做完，别跳步。先把新版本号定下来，下面命令都用 `$VERSION`：
 
 ```bash
-VERSION=0.2.2-rc.1   # 换成新版本
+VERSION=0.2.2-rc.5   # 换成新版本
 ```
 
 **1. 取新 tag 的源码。不要 clone 整仓**——350MB 在本机上会卡死。用 codeload 的 tag tarball（34MB 左右），只解那一个包目录：
@@ -69,17 +69,20 @@ npm run build          # = bash scripts/build.sh
 
 - **`tsc` 带 `--noCheck`。** 本包类型图牵到几乎整个 `@deepseek-ai` 宿主包树，默认堆（约 4GB）上做全量检查会 OOM；只关检查，emit 不受影响（产物与官方 npm 包对过，除补丁文件外只差文件尾那行指向不存在 `.map` 的 `sourceMappingURL`）。
 - **`@types/node` 装在 `.build-tools` 里，`tsc` 得带 `--typeRoots`。** `tsconfig.json` 的 `types: ["node"]` 只会从项目向上的 `node_modules/@types` 找，`.build-tools` 不在那条链上；`build.sh` 把 `@types/node` 跟 typescript/tsdown 一起装进去，并显式传 `--typeRoots "$BUILD_TOOLS/node_modules/@types"`，否则报 TS2688。
+- **`typecheck` 要给够堆。** `npm run typecheck` 直接跑会 `tsc: not found`（typescript 装在 `.build-tools`），走 `.build-tools/node_modules/.bin/tsc`；全量检查在 `NODE_OPTIONS=--max-old-space-size=6144` 下 4s 跑完、零错误（默认 4GB 堆才会 OOM）：
+  `NODE_OPTIONS=--max-old-space-size=6144 .build-tools/node_modules/.bin/tsc -p tsconfig.json --noEmit --typeRoots .build-tools/node_modules/@types`
 - **`tsdown` 入口是 `lib/types/index.js`，不是 `src/index.ts`。** `.ts` 直接进 rolldown 时 `@Remote()` 装饰器不按 legacy 语义转换，产物语法过不了 `node --check`。
 
 产物结构必须匹配 `package.json` 的 `exports` / `files`：
 
 - `.` → `lib/index.js` + `lib/types/index.d.ts`
-- `./internal` → `lib/types/internal.js` + `.d.ts`
 - `./client` → `lib/types/client.js` + `.d.ts`
 - `./typert` → `lib/typert.host.js` + `.d.ts`
 - `./remote` → `lib/typert.remote-client.js` + `.d.ts`
 
 少一个，宿主那边 import 就炸。`exports` 里另有 `./src/*`、`./package.json`、`./locale/*.json`，直接指向源码与语言包，不涉及构建产物。
+
+**rc.5 起上游删掉了 `src/internal.ts` 与 `./internal` 子路径**（rc.1 有），宿主的 `dsh-tool-subagent-control` 也改成只 import 主入口了；升级时别把 `./internal` 加回来。
 
 ## typert 四份什么时候要重出
 
@@ -98,33 +101,32 @@ done
 
 ## 测试
 
-`tests/` 现有 12 个 spec，全部可跑；上游那 12 个依赖 monorepo 内部 fixture 的已在本仓裁掉，`git log` 里查得到。裁掉的判据就是一条：任何 `from '../../../...'` 的 import 都指向上游 monorepo 里不存在的路径（`core/agent-loop/tests/mock-adapter.ts`、`settings/settings/tests/live-config.ts`、`llm/llm-deepseek/tests/helpers.ts`、`session/session-persistence-jsonl/src/format.ts`、`storage/*`、`schedule/*`），公开环境加载即失败。**这不是回归，别去修，也别把路径改成 npm 包。**
+`tests/` 现有 12 个 spec，196 条用例里 192 条过、4 条败；上游那 14 个依赖 monorepo 内部 fixture 的已在本仓裁掉，`git log` 里查得到。败的 4 条全在 `external-activation.spec.ts`（`delivers the full failed result with parent delivery`、`preserves the completed result for parent delivery when cleanup fails`、`reports external completed/aborted without offering another turn`），现象是 parent inbox `nextTurn` 空、通知没落地；用未打补丁的上游 rc.5 源码同样 4 条败，与本仓 `settlementNotice` 补丁无关，是单包测试环境里 `ctx.agents.get(parentId)` 拿到的 Agent 与 fixture 注册的不是同一个投递对象。要么按同样口径再裁，要么另开票查，别拿它当「补丁坏了」。裁掉的判据就是一条：任何 `from '../../../...'` 的 import 都指向上游 monorepo 里不存在的路径（`core/agent-loop/tests/mock-adapter.ts`、`settings/settings/tests/live-config.ts`、`llm/llm-deepseek/tests/helpers.ts`、`session/session-persistence-jsonl/src/format.ts`、`storage/*`、`schedule/*`），公开环境加载即失败。**这不是回归，别去修，也别把路径改成 npm 包。**
 
-跑之前先装声明里的 devDependencies——`node_modules/` 里的运行时包是软链宿主的，测试要的 `dsh-agent-loop`、`dsh-agent-loop-testkit`、`dsh-fs-sandbox`、`dsh-tool-fs`、`dsh-session-persistence-jsonl`、`cordis-plugin-loader|include` 不在里头。这些版本号都在 `package.json` 里，`dsh-agent-loop-testkit` npm 上有对应版本：
+跑之前先装依赖。`package-lock.json` 现在是完整的，直接照 lock 装就行（rc.1 那会儿 lock 里没有 testkit，才要 `--no-save` 单独补）：
 
 ```bash
-npm install --no-save @deepseek-ai/dsh-agent-loop-testkit@0.2.2-rc.1 \
-  @deepseek-ai/dsh-agent-loop@0.2.2-rc.1 @deepseek-ai/dsh-fs-sandbox@0.2.2-rc.1 \
-  @deepseek-ai/dsh-tool-fs@0.2.2-rc.1 @deepseek-ai/dsh-session-persistence-jsonl@0.2.2-rc.1 \
-  @deepseek-ai/cordis-plugin-loader@~1.0.6 @deepseek-ai/cordis-plugin-include@~1.0.10
-npx -y vitest@3 run      # 12 files / 162 tests，全绿
+rm -rf node_modules && npm ci      # 99 个包，约 3s（有缓存）
+npx -y vitest@3 run                # 12 files / 196 tests，192 过 4 败（见上）
 ```
 
-升级取新 tag 源码后，`tests/` 会重新带回来那 12 个。判据：`grep -l "from '\.\./\.\./\.\./" tests/*.spec.ts` 列出的就是，连它们专属的 helper/fixture 一起删；删之前确认没有别的 spec 引用（`grep -rn <名字> tests/src`）。
+**别在 `node_modules/` 里留着上一版的包再跑 `npm install`**：npm 会拿旧的 rc.x 树去解 peer，报 ERESOLVE 说 `dsh-agent@rc.1` 与 root 要的 rc.5 冲突。要么先 `rm -rf node_modules`，要么 `mv node_modules /tmp/x` 之后 `npm install --package-lock-only` 重解 lock。
+
+升级取新 tag 源码后，`tests/` 会重新带回来那 14 个。判据：`grep -l "from '\.\./\.\./\.\./" tests/*.spec.ts` 列出的就是，连它们专属的 helper/fixture 一起删；删之前确认没有别的 spec 引用（`grep -rn <名字> tests/src`）。
 
 ## 验收清单
 
-- [ ] `lib/index.js` 导出数（0.2.2-rc.1 是 25 个）：
+- [ ] `lib/index.js` 导出数（0.2.2-rc.4 及以前是 25 个，rc.5 是 26 个）：
 
 ```bash
 node --input-type=module -e "const m=await import('./lib/index.js'); console.log(Object.keys(m).length)"
 ```
 
-- [ ] 五个 exports 子路径都能 import（数量可以不等于入口的）：
+- [ ] 四个 exports 子路径都能 import（数量可以不等于入口的；rc.5 没有 `/internal`）：
 
 ```bash
 node --input-type=module -e "
-for (const s of ['', '/client', '/internal', '/typert', '/remote']) {
+for (const s of ['', '/client', '/typert', '/remote']) {
   const m = await import('@deepseek-ai/dsh-subagent' + s)
   console.log('ok', s || '.', Object.keys(m).length)
 }"
@@ -138,7 +140,7 @@ const { SubagentRuntime } = await import('./lib/index.js')
 console.log(SubagentRuntime.Config({}).settlementNotice)"
 ```
 
-- [ ] `lib` 里 js 文件数（0.2.2-rc.1 是 25 = 22 个 `lib/types/*.js` + `lib/index.js` + 两个 typert.js），d.ts 是 24：
+- [ ] `lib` 里 js 文件数（rc.5 仍是 25 = 22 个 `lib/types/*.js` + `lib/index.js` + 两个 typert.js；rc.5 少了 `internal.ts`、多了 `names.ts`，数量没变），d.ts 是 24：
 
 ```bash
 find lib -name '*.js' | wc -l; find lib -name '*.d.ts' | wc -l

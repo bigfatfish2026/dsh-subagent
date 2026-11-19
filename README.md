@@ -2,11 +2,11 @@
 
 > **非官方二次分发声明**
 >
-> 本仓库是 [`@deepseek-ai/dsh-subagent`](https://www.npmjs.com/package/@deepseek-ai/dsh-subagent) 0.2.2-rc.1 的**非官方**源码自建＋补丁分发，与 DeepSeek 官方无关，也不代表上游立场。除下文「改了什么」列出的 `settlementNotice` 一个开关外，`src/`、`locale/`、`tests/`（仅删掉依赖上游 monorepo 内部 fixture 的 spec）、`README.upstream*.md`、`tsconfig.upstream.json` 与 `typert/` 均为上游原样；`lib/` 是按上游配置自行构建的产物。上游版权归 DeepSeek，按 MIT 许可分发，完整许可见 `LICENSE`。本仓不发布到 npm，只用于本地 `link:` 覆盖。
+> 本仓库是 [`@deepseek-ai/dsh-subagent`](https://www.npmjs.com/package/@deepseek-ai/dsh-subagent) 0.2.2-rc.5 的**非官方**源码自建＋补丁分发，与 DeepSeek 官方无关，也不代表上游立场。除下文「改了什么」列出的 `settlementNotice` 一个开关外，`src/`、`locale/`、`tests/`（仅删掉依赖上游 monorepo 内部 fixture 的 spec）、`README.upstream*.md`、`tsconfig.upstream.json` 与 `typert/` 均为上游原样；`lib/` 是按上游配置自行构建的产物。上游版权归 DeepSeek，按 MIT 许可分发，完整许可见 `LICENSE`。本仓不发布到 npm，只用于本地 `link:` 覆盖。
 
-`@deepseek-ai/dsh-subagent` 0.2.2-rc.1 的**上游源码自建**，加一个结算通知开关。源码取自官方 monorepo 对应 tag，`lib/` 由本仓库自己构建。
+`@deepseek-ai/dsh-subagent` 0.2.2-rc.5 的**上游源码自建**，加一个结算通知开关。源码取自官方 monorepo 对应 tag，`lib/` 由本仓库自己构建。
 
-上游仓库：[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) `packages/subagent/subagent`，tag `dsh-v0.2.2-rc.1`（commit `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`），MIT 许可，署名保留在 `LICENSE`、`README.upstream.md`（英文）与 `README.upstream.zh.md`（中文）。
+上游仓库：[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) `packages/subagent/subagent`，tag `dsh-v0.2.2-rc.5`（commit `9c2670d3bce5275e0d1610272958121af87787bb`），MIT 许可，署名保留在 `LICENSE`、`README.upstream.md`（英文）与 `README.upstream.zh.md`（中文）。
 
 ## 改了什么
 
@@ -22,8 +22,8 @@
 
 ## 目录
 
-- `src/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`：上游 rc.1 原样。
-- `tests/`：12 个 spec，全部可跑；上游 24 个里依赖 monorepo 内部 fixture 的 12 个已删（详见 `AGENTS.md`）。
+- `src/`、`locale/`、`README.upstream.md`、`README.upstream.zh.md`：上游 rc.5 原样。
+- `tests/`：12 个 spec；上游 33 个里依赖 monorepo 内部 fixture 的 14 个已删，留下的 12 个中 `external-activation.spec.ts` 有 4 条在单包环境仍失败（与本仓补丁无关，详见 `AGENTS.md`）。
 - `lib/`：构建产物，随仓库提交。宿主用 `link:` 直接读这个目录，不会替你跑构建。
 - `typert/`：`lib/typert.host.*` 与 `lib/typert.remote-client.*` 的预生成源，构建时拷进 `lib/`。
 - `tsconfig.json`：从上游根 `tsconfig.base.json` 裁剪内联；`tsconfig.upstream.json` 保留原版备查。
@@ -41,13 +41,13 @@ npm run build          # = bash scripts/build.sh
 两个坑记在这：
 
 - **`tsdown` 的入口必须是 `lib/types/index.js` 而不是 `src/index.ts`。** `.ts` 直接进 rolldown 时 `@Remote()` 装饰器不会按 legacy 语义转换，产出的 JS 语法都过不了 `node --check`。官方根配置也走编译后 JS 入口。
-- **`tsc` 带 `--noCheck`。** 本包的类型图会牵到几乎整个 `@deepseek-ai` 宿主包树，在本机默认堆上做全量检查会 OOM。emit 不受影响——产物 JS/`d.ts` 与 npm 发布的 rc.1 逐文件核对过，只差文件尾那行指向不存在 `.map` 的 `sourceMappingURL` 注释（上游发布包里同样没有 `.map`）。
+- **`tsc` 带 `--noCheck`。** 本包的类型图会牵到几乎整个 `@deepseek-ai` 宿主包树，在本机默认堆上做全量检查会 OOM。emit 不受影响——产物 JS/`d.ts` 与 npm 发布的 rc.5 逐文件核对过，只差文件尾那行指向不存在 `.map` 的 `sourceMappingURL` 注释（上游发布包里同样没有 `.map`）。
 
 `tsc` 开了 `rewriteRelativeImportExtensions`，源码里 `./types.ts` 这种后缀会被重写成 `.js`；`d.ts` 里保留 `.ts`，上游发布产物也是这样，`moduleResolution: bundler` 能解析。
 
 ## 两个非自建产物
 
-`typert/` 下那四个文件是 `@deepseek-ai/dsh-typert-generator` 从 FaceModel 生成的，不含业务逻辑，只描述 remote 方法的参数 schema。自己生成要跑整个 monorepo 的 generator，这里沿用 0.2.2-rc.1 官方发布的那份预生成产物。只有上游改了 remote 表面才需要跟着换。
+`typert/` 下那四个文件是 `@deepseek-ai/dsh-typert-generator` 从 FaceModel 生成的，不含业务逻辑，只描述 remote 方法的参数 schema。自己生成要跑整个 monorepo 的 generator，这里沿用 0.2.2-rc.5 官方发布的那份预生成产物。只有上游改了 remote 表面才需要跟着换。
 
 ## 怎么用
 
@@ -77,6 +77,6 @@ npm run build          # = bash scripts/build.sh
 
 ## 注意
 
-- `tests/` 现有 12 个 spec，全部可跑（`npx -y vitest@3 run`：12 files / 162 tests）。上游另外 12 个 import `../../../core/agent-loop/tests/mock-adapter.ts` 这类 monorepo 内部 fixture，在本仓永远加载失败，已删掉；别再把它们加回来。跑测试前要先装 `package.json` 里声明的 devDependencies（步骤见 `AGENTS.md`）。
+- `tests/` 现有 12 个 spec（`npx -y vitest@3 run`：12 files / 196 tests，192 过 4 败）。上游另有 14 个 import `../../../core/agent-loop/tests/mock-adapter.ts` 这类 monorepo 内部 fixture，在本仓永远加载失败，已删掉；别再把它们加回来。跑测试前要先装 `package.json` 里声明的 devDependencies（步骤见 `AGENTS.md`）。
 - 这是源码 fork，不是产物补丁。早先那套「从全局安装目录拷 `lib/` 再打 patch」的 `patches/` 和 `scripts/rebuild.sh` 已随改造删除，历史留在 git log 里。
 - 不要往这个仓库里塞 `node_modules` 和 `.build-tools`。

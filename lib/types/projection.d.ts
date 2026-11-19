@@ -64,7 +64,8 @@ export declare const subagentTimingProjectionDefinition: {
     };
     stateVersion: number;
 };
-interface IdentityState {
+/** Descriptor identity retained by the subagent projection. */
+export interface IdentityState {
     /** Identity from the last valid descriptor; absent before one, and after an invalid one. */
     identity?: SubagentIdentityProjection | undefined;
 }
@@ -90,4 +91,3 @@ export declare const subagentIdentityProjectionDefinition: {
     };
     stateVersion: number;
 };
-export {};
